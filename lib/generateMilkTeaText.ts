@@ -98,10 +98,83 @@ export function generateMilkTeaText(userInput: string): { text: string; recommen
   };
 }
 
-// 模拟 AI 生成（实际项目中可替换为真实 AI API）
+// 使用 OpenRouter API 调用 Mistral AI 生成真实的奶茶文案
 export async function generateMilkTeaTextAI(userInput: string): Promise<{ text: string; recommendation: string }> {
-  // 模拟网络延迟
-  await new Promise(resolve => setTimeout(resolve, 800));
+  const apiKey = process.env.OPENROUTER_API_KEY;
   
-  return generateMilkTeaText(userInput);
+  // 如果没有 API key，回退到模拟生成
+  if (!apiKey || apiKey === '') {
+    console.log('No OPENROUTER_API_KEY found, using simulated generation');
+    return generateMilkTeaText(userInput);
+  }
+
+  try {
+    // 构造提示词，指导模型生成 Grok 式阴阳怪气文案和推荐
+    const systemPrompt = `你是一个"奶茶吐槽大师"，擅长用 Grok 式阴阳怪气的幽默风格将用户的心情吐槽转化为创意奶茶文案。
+
+请根据用户的输入，生成以下内容：
+1. 一段 Grok 式阴阳怪气的奶茶描述文案（使用中文网络流行语、幽默调侃语气）
+2. 推荐一杯"解气奶茶"（必须是"五分糖去冰茉莉奶白"的变体，如："五分糖去冰茉莉奶白（职场保命款）"）
+
+格式要求：
+- 奶茶文案：100-150字，幽默风趣，带点小毒舌但友好
+- 推荐奶茶：必须是"五分糖去冰茉莉奶白（XXX款）"格式，括号内为创意变体名
+
+用户输入：${userInput}
+
+请用以下 JSON 格式回复：
+{
+  "text": "奶茶文案内容",
+  "recommendation": "五分糖去冰茉莉奶白（变体名）"
+}`;
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://ai-milk-tea-rant-machine.vercel.app',
+        'X-Title': 'AI 奶茶吐槽机'
+      },
+      body: JSON.stringify({
+        model: 'mistralai/mistral-small-creative',
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt
+          },
+          {
+            role: 'user',
+            content: `根据我的吐槽生成奶茶文案和推荐：${userInput}`
+          }
+        ],
+        temperature: 0.8,
+        max_tokens: 500
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0].message.content;
+    
+    // 尝试解析 JSON 响应
+    try {
+      const parsed = JSON.parse(content);
+      return {
+        text: parsed.text || 'AI 生成失败，请稍后重试',
+        recommendation: parsed.recommendation || '五分糖去冰茉莉奶白（默认款）'
+      };
+    } catch (parseError) {
+      console.error('Failed to parse AI response:', parseError, 'Content:', content);
+      // 如果解析失败，尝试从文本中提取信息或使用模拟数据
+      return generateMilkTeaText(userInput);
+    }
+  } catch (error) {
+    console.error('Error calling OpenRouter API:', error);
+    // API 调用失败时回退到模拟生成
+    return generateMilkTeaText(userInput);
+  }
 }
