@@ -1,5 +1,23 @@
 // 模拟 Grok 式阴阳怪气奶茶文案生成
 
+// 带有超时的 fetch 辅助函数
+async function fetchWithTimeout(url: string, options: RequestInit, timeout = 8000): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+}
+
 const grokPrefixes = [
   "哎呦喂，这不是",
   "笑死，原来你",
@@ -142,7 +160,7 @@ export async function generateMilkTeaTextAI(userInput: string): Promise<{ text: 
   "recommendation": "创意奶茶推荐，如：'三倍珍珠七分甜少冰暴打柠檬奶茶（专治各种不服款）'"
 }`;
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const response = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -165,7 +183,7 @@ export async function generateMilkTeaTextAI(userInput: string): Promise<{ text: 
         temperature: 0.8,
         max_tokens: 600
       })
-    });
+    }, 8000); // 8秒超时
 
     if (!response.ok) {
       throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
@@ -224,7 +242,7 @@ export async function generateImagePromptAI(userInput: string): Promise<string> 
 
 请直接返回英文提示词，不要添加任何额外说明。`;
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const response = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -247,7 +265,7 @@ export async function generateImagePromptAI(userInput: string): Promise<string> 
         temperature: 0.9,
         max_tokens: 300
       })
-    });
+    }, 8000); // 8秒超时
 
     if (!response.ok) {
       throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
@@ -285,7 +303,7 @@ export async function generateImageWithGemini(prompt: string): Promise<string | 
     // 注意：gemini-3-pro-image-preview 或 gemini-2.5-flash-image 支持图像输出
     const model = 'google/gemini-3-pro-image-preview'; // 或 'google/gemini-2.5-flash-image'
     
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const response = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -309,7 +327,7 @@ export async function generateImageWithGemini(prompt: string): Promise<string | 
         temperature: 0.8,
         max_tokens: 100
       })
-    });
+    }, 10000); // 10秒超时，图像生成可能更耗时
 
     if (!response.ok) {
       console.error(`Gemini image generation API error: ${response.status} ${response.statusText}`);
