@@ -40,16 +40,21 @@ const sarcasticComments = [
 ];
 
 const recommendations = [
-  "五分糖去冰茉莉奶白（解气特调版）",
+  "三倍珍珠七分甜少冰暴打柠檬奶茶（专治各种不服款）",
   "五分糖去冰茉莉奶白（职场保命款）",
-  "五分糖去冰茉莉奶白（内心平静型）",
-  "五分糖去冰茉莉奶白（阴阳平衡款）",
-  "五分糖去冰茉莉奶白（佛系养生款）",
-  "五分糖去冰茉莉奶白（表面笑嘻嘻款）",
-  "五分糖去冰茉莉奶白（暗中观察款）",
-  "五分糖去冰茉莉奶白（默默努力款）",
-  "五分糖去冰茉莉奶白（迟早跑路款）",
-  "五分糖去冰茉莉奶白（未来可期款）",
+  "全糖多冰芝士奶盖红茶（今日摆烂限定版）",
+  "无糖热乌龙奶茶加仙草（佛系养生特调）",
+  "七分糖正常冰珍珠奶茶加布丁（表面笑嘻嘻款）",
+  "三分糖少冰芋圆奶茶（暗中观察摸鱼版）",
+  "半糖去冰椰果奶茶（默默努力加班款）",
+  "全糖多冰草莓奶昔（迟早跑路狂欢版）",
+  "无糖热抹茶拿铁（未来可期清醒款）",
+  "随机糖度随机冰水果茶（选择性困难治愈款）",
+  "隐藏菜单：老板看不见珍珠奶茶（PUA防御特调）",
+  "限定款：左耳进右耳出奶绿（无效沟通过滤版）",
+  "秘制配方：表面平静实则翻江倒海水果茶（内心戏满分）",
+  "特调：人间清醒美式咖啡奶茶（混合双打版）",
+  "定制款：选择性耳聋芋圆奶茶（自动过滤画饼技术）",
 ];
 
 export function generateMilkTeaText(userInput: string): { text: string; recommendation: string } {
@@ -98,7 +103,7 @@ export function generateMilkTeaText(userInput: string): { text: string; recommen
   };
 }
 
-// 使用 OpenRouter API 调用 Mistral AI 生成真实的奶茶文案
+// 使用 OpenRouter API 调用 Grok-4-fast 生成真实的奶茶文案和推荐
 export async function generateMilkTeaTextAI(userInput: string): Promise<{ text: string; recommendation: string }> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   
@@ -108,24 +113,33 @@ export async function generateMilkTeaTextAI(userInput: string): Promise<{ text: 
     return generateMilkTeaText(userInput);
   }
 
+   // 调试日志：显示API key状态（不显示完整key）
+   console.log(`OpenRouter API key found, length: ${apiKey ? apiKey.length : 0}, starts with: ${apiKey ? apiKey.substring(0, 10) + '...' : 'none'}`);
   try {
-    // 构造提示词，指导模型生成 Grok 式阴阳怪气文案和推荐
+    // 构造提示词，指导模型生成 Grok 式阴阳怪气文案和创意奶茶推荐
     const systemPrompt = `你是一个"奶茶吐槽大师"，擅长用 Grok 式阴阳怪气的幽默风格将用户的心情吐槽转化为创意奶茶文案。
 
 请根据用户的输入，生成以下内容：
-1. 一段 Grok 式阴阳怪气的奶茶描述文案（使用中文网络流行语、幽默调侃语气）
-2. 推荐一杯"解气奶茶"（必须是"五分糖去冰茉莉奶白"的变体，如："五分糖去冰茉莉奶白（职场保命款）"）
+1. 一段 Grok 式阴阳怪气的奶茶描述文案（使用中文网络流行语、幽默调侃语气，100-150字）
+2. 推荐一杯"解气奶茶"（请发挥创意，不要局限于茉莉奶白，可以是任何有趣的奶茶名称和配方）
 
-格式要求：
-- 奶茶文案：100-150字，幽默风趣，带点小毒舌但友好
-- 推荐奶茶：必须是"五分糖去冰茉莉奶白（XXX款）"格式，括号内为创意变体名
+奶茶文案要求：
+- 幽默风趣，带点小毒舌但友好
+- 使用中文网络流行语和梗
+- 反映用户输入的情绪
+
+奶茶推荐要求：
+- 可以是任何创意奶茶名称
+- 包括配料、糖度、冰度等具体描述
+- 与用户的吐槽内容相关
+- 富有创意和幽默感
 
 用户输入：${userInput}
 
 请用以下 JSON 格式回复：
 {
   "text": "奶茶文案内容",
-  "recommendation": "五分糖去冰茉莉奶白（变体名）"
+  "recommendation": "创意奶茶推荐，如：'三倍珍珠七分甜少冰暴打柠檬奶茶（专治各种不服款）'"
 }`;
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -134,10 +148,10 @@ export async function generateMilkTeaTextAI(userInput: string): Promise<{ text: 
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': 'https://ai-milk-tea-rant-machine.vercel.app',
-        'X-Title': 'AI 奶茶吐槽机'
+        'X-Title': 'AI Milk Tea Rant Machine'
       },
       body: JSON.stringify({
-        model: 'mistralai/mistral-small-creative',
+        model: 'x-ai/grok-4-fast',
         messages: [
           {
             role: 'system',
@@ -149,7 +163,7 @@ export async function generateMilkTeaTextAI(userInput: string): Promise<{ text: 
           }
         ],
         temperature: 0.8,
-        max_tokens: 500
+        max_tokens: 600
       })
     });
 
@@ -165,7 +179,7 @@ export async function generateMilkTeaTextAI(userInput: string): Promise<{ text: 
       const parsed = JSON.parse(content);
       return {
         text: parsed.text || 'AI 生成失败，请稍后重试',
-        recommendation: parsed.recommendation || '五分糖去冰茉莉奶白（默认款）'
+        recommendation: parsed.recommendation || '随机解气奶茶'
       };
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError, 'Content:', content);
@@ -175,6 +189,171 @@ export async function generateMilkTeaTextAI(userInput: string): Promise<{ text: 
   } catch (error) {
     console.error('Error calling OpenRouter API:', error);
     // API 调用失败时回退到模拟生成
+     console.log('Falling back to simulated generation due to API error');
     return generateMilkTeaText(userInput);
+  }
+}
+
+// 使用 OpenRouter API 生成创意图像提示词
+export async function generateImagePromptAI(userInput: string): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  
+  // 如果没有 API key，回退到模拟生成
+  if (!apiKey || apiKey === '') {
+    console.log('No OPENROUTER_API_KEY found, using simulated image prompt');
+    const keywords = userInput.split(' ').slice(0, 5).join(', ');
+    return `Abstract surrealist painting of a tea egg drinking milk tea in a cosmic cafe, ${keywords}, digital art, vibrant colors, dreamlike atmosphere, liquid textures, by James Jean and Moebius, trending on artstation`;
+  }
+
+  try {
+    // 构造提示词，指导模型生成创意图像描述
+    const systemPrompt = `你是一个"艺术指导专家"，擅长将用户的心情和吐槽转化为创意图像提示词。
+
+请根据用户的输入，生成一个用于AI图像生成的创意提示词（英文）。
+主题要求：以"茶叶蛋喝奶茶"为创意核心，结合用户的心情场景，创作超现实主义、抽象艺术的图像描述。
+
+提示词要求：
+1. 必须是英文描述
+2. 包含艺术风格（如：abstract surrealist painting, digital art）
+3. 包含视觉元素（如：tea egg drinking milk tea, cosmic cafe, liquid textures）
+4. 包含艺术家参考（如：by James Jean and Moebius）
+5. 包含质量标签（如：trending on artstation, 4K, masterpiece）
+6. 与用户的心情相关
+
+用户输入：${userInput}
+
+请直接返回英文提示词，不要添加任何额外说明。`;
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://ai-milk-tea-rant-machine.vercel.app',
+        'X-Title': 'AI Milk Tea Rant Machine'
+      },
+      body: JSON.stringify({
+        model: 'x-ai/grok-4-fast',
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt
+          },
+          {
+            role: 'user',
+            content: `根据我的心情生成图像提示词：${userInput}`
+          }
+        ],
+        temperature: 0.9,
+        max_tokens: 300
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const prompt = data.choices[0].message.content.trim();
+    
+    // 确保返回的是有效的提示词
+    if (!prompt || prompt.length < 10) {
+      throw new Error('Generated prompt is too short or empty');
+    }
+    
+    return prompt;
+  } catch (error) {
+    console.error('Error generating image prompt via AI:', error);
+    // API 调用失败时回退到模拟提示词
+    const keywords = userInput.split(' ').slice(0, 5).join(', ');
+    return `Abstract surrealist painting of a tea egg drinking milk tea in a cosmic cafe, ${keywords}, digital art, vibrant colors, dreamlike atmosphere, liquid textures, by James Jean and Moebius, trending on artstation`;
+  }
+}
+
+// 使用 OpenRouter API 调用 Gemini 生成图像
+export async function generateImageWithGemini(prompt: string): Promise<string | null> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  
+  // 如果没有 API key，回退到模拟生成
+  if (!apiKey || apiKey === '') {
+    console.log('No OPENROUTER_API_KEY found, cannot generate image with Gemini');
+    return null;
+  }
+
+  try {
+    // 使用支持图像生成的 Gemini 模型
+    // 注意：gemini-3-pro-image-preview 或 gemini-2.5-flash-image 支持图像输出
+    const model = 'google/gemini-3-pro-image-preview'; // 或 'google/gemini-2.5-flash-image'
+    
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://ai-milk-tea-rant-machine.vercel.app',
+        'X-Title': 'AI Milk Tea Rant Machine'
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `Generate a high-quality abstract surrealist image based on this prompt: ${prompt}. Respond with an image.`
+              }
+            ]
+          }
+        ],
+        temperature: 0.8,
+        max_tokens: 100
+      })
+    });
+
+    if (!response.ok) {
+      console.error(`Gemini image generation API error: ${response.status} ${response.statusText}`);
+      return null;
+    }
+
+    const data = await response.json();
+    
+    // 尝试从响应中提取图像URL或数据
+    // 注意：具体格式取决于 OpenRouter 和 Gemini API 的实现
+    // 这里假设响应中包含图像URL或base64编码的图像数据
+    const message = data.choices?.[0]?.message;
+    
+    if (!message) {
+      console.error('No message in Gemini image generation response');
+      return null;
+    }
+
+    // 检查是否有图像内容
+    if (message.content && Array.isArray(message.content)) {
+      // 查找图像部分
+      const imagePart = message.content.find((part: any) => part.type === 'image' || part.type === 'image_url');
+      if (imagePart?.image_url?.url) {
+        return imagePart.image_url.url;
+      }
+      if (imagePart?.url) {
+        return imagePart.url;
+      }
+    }
+    
+    // 如果响应是纯文本，尝试解析可能的图像URL
+    if (typeof message.content === 'string') {
+      // 尝试从文本中提取URL
+      const urlMatch = message.content.match(/(https?:\/\/[^\s]+)/);
+      if (urlMatch) {
+        return urlMatch[0];
+      }
+    }
+    
+    console.error('Could not extract image from Gemini response:', JSON.stringify(data, null, 2));
+    return null;
+    
+  } catch (error) {
+    console.error('Error generating image with Gemini:', error);
+    return null;
   }
 }

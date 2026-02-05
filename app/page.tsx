@@ -1,8 +1,38 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import InputForm from '@/components/InputForm';
 import ResultDisplay from '@/components/ResultDisplay';
+
+// 随机今日特调生成器
+const generateTodaySpecial = () => {
+  const adjectives = [
+    '解气', '消愁', '抗压', '佛系', '职场', '摸鱼', '治愈', '摆烂', 
+    '元气', '冷静', '智慧', '幸运', '暴富', '升职', '逆袭', '躺平'
+  ];
+  
+  const teaBases = [
+    '茉莉奶白', '乌龙奶茶', '珍珠奶茶', '奶盖红茶', '芝士奶绿',
+    '芋圆奶茶', '水果茶', '黑糖珍珠', '椰果奶茶', '布丁奶茶',
+    '抹茶拿铁', '巧克力奶茶', '草莓奶昔', '芒果冰沙', '柠檬茶'
+  ];
+  
+  const modifiers = [
+    '变体', '特调', '定制款', '限定版', '隐藏菜单', '秘制配方',
+    'plus版', 'pro版', 'ultimate版', '特别款', '专属款'
+  ];
+  
+  const sugarLevels = ['无糖', '三分糖', '五分糖', '七分糖', '全糖'];
+  const iceLevels = ['去冰', '少冰', '正常冰', '多冰'];
+  
+  const adjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const teaBase = teaBases[Math.floor(Math.random() * teaBases.length)];
+  const modifier = modifiers[Math.floor(Math.random() * modifiers.length)];
+  const sugar = sugarLevels[Math.floor(Math.random() * sugarLevels.length)];
+  const ice = iceLevels[Math.floor(Math.random() * iceLevels.length)];
+  
+  return `${adjective}奶茶（${sugar}${ice}${teaBase}${modifier}）`;
+};
 
 type GenerationResult = {
   milkTeaText: string;
@@ -15,6 +45,12 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingImage, setIsLoadingImage] = useState(false);
   const [result, setResult] = useState<GenerationResult | null>(null);
+  const [todaySpecial, setTodaySpecial] = useState<string>('');
+
+  // 在组件加载时生成今日特调
+  useEffect(() => {
+    setTodaySpecial(generateTodaySpecial());
+  }, []);
 
   const handleSubmit = async (userInput: string) => {
     setIsLoading(true);
@@ -63,7 +99,7 @@ export default function Home() {
           </p>
           <div className="inline-flex items-center bg-white rounded-full px-6 py-2 shadow-lg">
             <span className="text-2xl mr-2">🔥</span>
-            <span className="text-gray-700">今日特调：解气奶茶（五分糖去冰茉莉奶白变体）</span>
+            <span className="text-gray-700">今日特调：{todaySpecial || '加载中...'}</span>
           </div>
         </div>
       </header>
