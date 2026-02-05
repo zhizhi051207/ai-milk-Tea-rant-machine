@@ -133,9 +133,12 @@ export async function generateMilkTeaTextAI(userInput: string): Promise<{ text: 
 
    // 调试日志：显示API key状态（不显示完整key）
    console.log(`OpenRouter API key found, length: ${apiKey ? apiKey.length : 0}, starts with: ${apiKey ? apiKey.substring(0, 10) + '...' : 'none'}`);
-  try {
-    // 构造提示词，指导模型生成 Grok 式阴阳怪气文案和创意奶茶推荐
-    const systemPrompt = `你是一个"奶茶吐槽大师"，擅长用 Grok 式阴阳怪气的幽默风格将用户的心情吐槽转化为创意奶茶文案。
+  
+  // 使用 Promise.race 确保在 6 秒内返回结果（即使 API 挂起）
+  const aiPromise = (async () => {
+    try {
+      // 构造提示词，指导模型生成 Grok 式阴阳怪气文案和创意奶茶推荐
+      const systemPrompt = `你是一个"奶茶吐槽大师"，擅长用 Grok 式阴阳怪气的幽默风格将用户的心情吐槽转化为创意奶茶文案。
 
 请根据用户的输入，生成以下内容：
 1. 一段 Grok 式阴阳怪气的奶茶描述文案（使用中文网络流行语、幽默调侃语气，100-150字）
@@ -160,54 +163,71 @@ export async function generateMilkTeaTextAI(userInput: string): Promise<{ text: 
   "recommendation": "创意奶茶推荐，如：'三倍珍珠七分甜少冰暴打柠檬奶茶（专治各种不服款）'"
 }`;
 
-    const response = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://ai-milk-tea-rant-machine.vercel.app',
-        'X-Title': 'AI Milk Tea Rant Machine'
-      },
-      body: JSON.stringify({
-        model: 'x-ai/grok-4-fast',
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt
-          },
-          {
-            role: 'user',
-            content: `根据我的吐槽生成奶茶文案和推荐：${userInput}`
-          }
-        ],
-        temperature: 0.8,
-        max_tokens: 600
-      })
-    }, 8000); // 8秒超时
+      const response = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://ai-milk-tea-rant-machine.vercel.app',
+          'X-Title': 'AI Milk Tea Rant Machine'
+        },
+        body: JSON.stringify({
+          model: 'x-ai/grok-4-fast',
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt
+            },
+            {
+              role: 'user',
+              content: `根据我的吐槽生成奶茶文案和推荐：${userInput}`
+            }
+          ],
+          temperature: 0.8,
+          max_tokens: 600
+        })
+      }, 6000); // 6秒超时（进一步减少）
 
-    if (!response.ok) {
-      throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
-    }
+      if (!response.ok) {
+        throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
+      }
 
-    const data = await response.json();
-    const content = data.choices[0].message.content;
-    
-    // 尝试解析 JSON 响应
-    try {
-      const parsed = JSON.parse(content);
-      return {
-        text: parsed.text || 'AI 生成失败，请稍后重试',
-        recommendation: parsed.recommendation || '随机解气奶茶'
-      };
-    } catch (parseError) {
-      console.error('Failed to parse AI response:', parseError, 'Content:', content);
-      // 如果解析失败，尝试从文本中提取信息或使用模拟数据
-      return generateMilkTeaText(userInput);
+      const data = await response.json();
+      const content = data.choices[0].message.content;
+      
+      // 尝试解析 JSON 响应
+      try {
+        const parsed = JSON.parse(content);
+        return {
+          text: parsed.text || 'AI 生成失败，请稍后重试',
+          recommendation: parsed.recommendation || '随机解气奶茶'
+        };
+      } catch (parseError) {
+        console.error('Failed to parse AI response:', parseError, 'Content:', content);
+        // 如果解析失败，尝试从文本中提取信息或使用模拟数据
+        return generateMilkTeaText(userInput);
+      }
+    } catch (error) {
+      console.error('Error calling OpenRouter API:', error);
+      // API 调用失败时回退到模拟生成
+       console.log('Falling back to simulated generation due to API error');
+      throw error; // 重新抛出，让外层的 fallback 处理
     }
+  })();
+
+  // 超时 Promise：6秒后返回模拟结果
+  const timeoutPromise = new Promise<{ text: string; recommendation: string }>((resolve) => {
+    setTimeout(() => {
+      console.log('OpenRouter API timeout after 6 seconds, using simulated generation');
+      resolve(generateMilkTeaText(userInput));
+    }, 6000);
+  });
+
+  try {
+    return await Promise.race([aiPromise, timeoutPromise]);
   } catch (error) {
-    console.error('Error calling OpenRouter API:', error);
-    // API 调用失败时回退到模拟生成
-     console.log('Falling back to simulated generation due to API error');
+    // 如果 aiPromise 抛出错误（且未超时），回退到模拟生成
+    console.log('OpenRouter API failed, using simulated generation');
     return generateMilkTeaText(userInput);
   }
 }
@@ -223,9 +243,11 @@ export async function generateImagePromptAI(userInput: string): Promise<string> 
     return `Abstract surrealist painting of a tea egg drinking milk tea in a cosmic cafe, ${keywords}, digital art, vibrant colors, dreamlike atmosphere, liquid textures, by James Jean and Moebius, trending on artstation`;
   }
 
-  try {
-    // 构造提示词，指导模型生成创意图像描述
-    const systemPrompt = `你是一个"艺术指导专家"，擅长将用户的心情和吐槽转化为创意图像提示词。
+  // 使用 Promise.race 确保在 6 秒内返回结果（即使 API 挂起）
+  const aiPromise = (async () => {
+    try {
+      // 构造提示词，指导模型生成创意图像描述
+      const systemPrompt = `你是一个"艺术指导专家"，擅长将用户的心情和吐槽转化为创意图像提示词。
 
 请根据用户的输入，生成一个用于AI图像生成的创意提示词（英文）。
 主题要求：以"茶叶蛋喝奶茶"为创意核心，结合用户的心情场景，创作超现实主义、抽象艺术的图像描述。
@@ -242,47 +264,64 @@ export async function generateImagePromptAI(userInput: string): Promise<string> 
 
 请直接返回英文提示词，不要添加任何额外说明。`;
 
-    const response = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://ai-milk-tea-rant-machine.vercel.app',
-        'X-Title': 'AI Milk Tea Rant Machine'
-      },
-      body: JSON.stringify({
-        model: 'x-ai/grok-4-fast',
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt
-          },
-          {
-            role: 'user',
-            content: `根据我的心情生成图像提示词：${userInput}`
-          }
-        ],
-        temperature: 0.9,
-        max_tokens: 300
-      })
-    }, 8000); // 8秒超时
+      const response = await fetchWithTimeout('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://ai-milk-tea-rant-machine.vercel.app',
+          'X-Title': 'AI Milk Tea Rant Machine'
+        },
+        body: JSON.stringify({
+          model: 'x-ai/grok-4-fast',
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt
+            },
+            {
+              role: 'user',
+              content: `根据我的心情生成图像提示词：${userInput}`
+            }
+          ],
+          temperature: 0.9,
+          max_tokens: 300
+        })
+      }, 6000); // 6秒超时（进一步减少）
 
-    if (!response.ok) {
-      throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
-    }
+      if (!response.ok) {
+        throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
+      }
 
-    const data = await response.json();
-    const prompt = data.choices[0].message.content.trim();
-    
-    // 确保返回的是有效的提示词
-    if (!prompt || prompt.length < 10) {
-      throw new Error('Generated prompt is too short or empty');
+      const data = await response.json();
+      const prompt = data.choices[0].message.content.trim();
+      
+      // 确保返回的是有效的提示词
+      if (!prompt || prompt.length < 10) {
+        throw new Error('Generated prompt is too short or empty');
+      }
+      
+      return prompt;
+    } catch (error) {
+      console.error('Error generating image prompt via AI:', error);
+      throw error; // 重新抛出，让外层的 fallback 处理
     }
-    
-    return prompt;
+  })();
+
+  // 超时 Promise：6秒后返回模拟提示词
+  const timeoutPromise = new Promise<string>((resolve) => {
+    setTimeout(() => {
+      console.log('OpenRouter API timeout after 6 seconds, using simulated image prompt');
+      const keywords = userInput.split(' ').slice(0, 5).join(', ');
+      resolve(`Abstract surrealist painting of a tea egg drinking milk tea in a cosmic cafe, ${keywords}, digital art, vibrant colors, dreamlike atmosphere, liquid textures, by James Jean and Moebius, trending on artstation`);
+    }, 6000);
+  });
+
+  try {
+    return await Promise.race([aiPromise, timeoutPromise]);
   } catch (error) {
-    console.error('Error generating image prompt via AI:', error);
-    // API 调用失败时回退到模拟提示词
+    // 如果 aiPromise 抛出错误（且未超时），回退到模拟提示词
+    console.log('OpenRouter API failed, using simulated image prompt');
     const keywords = userInput.split(' ').slice(0, 5).join(', ');
     return `Abstract surrealist painting of a tea egg drinking milk tea in a cosmic cafe, ${keywords}, digital art, vibrant colors, dreamlike atmosphere, liquid textures, by James Jean and Moebius, trending on artstation`;
   }

@@ -13,11 +13,11 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // 为整个API设置全局超时（22秒，留出3秒余量）
+    // 为整个API设置全局超时（15秒，确保在Vercel 25秒限制内）
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => {
         reject(new Error('API请求超时，请稍后重试'));
-      }, 22000);
+      }, 15000);
     });
 
     // 主逻辑函数
